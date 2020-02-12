@@ -4,32 +4,48 @@ module Main where
 
 import Data.Thyme
 
+import Paths_measure (version)
 import Data.AffineSpace ((.-.), Diff)
 import Data.List (intercalate)
 import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
 
+import qualified Data.Version as DV
+
 data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b | Completed ExitCode
 
 type UTCMeasurement = Measurement UTCTime (Diff UTCTime) String
 
-main :: IO ()
+showHelp, showVersion, main :: IO ()
+
+showHelp = putStrLn "usage: measure <command>"
+
+showVersion = putStrLn $ "measure version " <> (DV.showVersion version)
+
 main = do
+  args <- getArgs
+  case args of
+    ["--version"] -> showVersion
+    ["--help"]    -> showHelp
+    cmd:params    -> runMeasure (cmd:params)
+    []            -> showHelp
+
+runMeasure :: [String] -> IO ()
+runMeasure args = do
   start <- getCurrentTime
   putStrLn $ prettyMeasurement (StartTime start :: UTCMeasurement)
-  args <- getArgs
-  let exec = intercalate " " args
-  run exec
+  let program = intercalate " " args
+  runProgram program
   end <- getCurrentTime
   putStrLn $ prettyMeasurement (EndTime end :: UTCMeasurement)
   let diff = end .-. start :: Diff UTCTime
   putStrLn $ prettyMeasurement (TimeTaken diff :: UTCMeasurement)
 
-run :: String -> IO ()
-run exec = do 
-  putStrLn $ prettyMeasurement (Running exec :: UTCMeasurement)
-  handle   <- spawnCommand exec
+runProgram :: String -> IO ()
+runProgram program = do 
+  putStrLn $ prettyMeasurement (Running program :: UTCMeasurement)
+  handle   <- spawnCommand program
   exitCode <- waitForProcess handle
   putStrLn $ prettyMeasurement (Completed exitCode :: UTCMeasurement)
 
