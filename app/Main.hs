@@ -55,7 +55,7 @@ prettyMeasurement (StartTime value) = measureout "start"   value
 prettyMeasurement (Running value)   = measureout "running" value
 prettyMeasurement (EndTime value)   = measureout "end"     value
 prettyMeasurement (TimeTaken value) = measureout "time"    value
-prettyMeasurement (Completed ExitSuccess)        = measureout "success"   0
+prettyMeasurement (Completed ExitSuccess)        = measureout "success"   (0 :: Int)
 prettyMeasurement (Completed (ExitFailure code)) = measureout "failed"    code
 
 measureout :: forall a. Show a => String -> a -> String
