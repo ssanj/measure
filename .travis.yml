@@ -12,10 +12,10 @@ os:
 - linux
 - osx
 before_install:
-- sh tools/install-stack.sh
-- sh tools/install-ghr.sh
+- bash tools/install-stack.sh
+- bash tools/install-ghr.sh
 script:
 - stack setup
 - stack build --ghc-options -O2 --pedantic
 after_success:
-- sh tools/attach-binary.sh
+- bash tools/attach-binary.sh
