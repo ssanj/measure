@@ -1,4 +1,4 @@
-set -o errexit -o verbose
+set -Eeuxo pipefail
 
 if test -f "$HOME/.local/bin/stack"
 then
