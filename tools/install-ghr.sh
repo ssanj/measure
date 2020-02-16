@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -Eeuxo pipefail
 
 if test ! "$TRAVIS_TAG"
