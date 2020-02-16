@@ -1,5 +1,5 @@
 name:                measure
-version:             0.1.0.5
+version:             0.1.0.6
 github:              "ssanj/measure"
 license:             BSD3
 author:              "sanjiv sahayam"
@@ -29,7 +29,7 @@ library:
   source-dirs: src
 
 executables:
-  measure-exe:
+  measure:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
