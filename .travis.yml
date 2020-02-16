@@ -17,5 +17,4 @@ before_install:
 script:
 - stack setup
 - stack build --ghc-options -O2 --pedantic
-after_success:
 - bash tools/attach-binary.sh
