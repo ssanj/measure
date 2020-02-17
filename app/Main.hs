@@ -10,6 +10,7 @@ import Data.List (intercalate)
 import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
+import Format (green, yellow)
 
 import qualified Data.Version as DV
 
@@ -17,19 +18,36 @@ data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b | Com
 
 type UTCMeasurement = Measurement UTCTime (Diff UTCTime) String
 
-showHelp, showVersion, main :: IO ()
+showHelp, showVersion, showCombinedVersion, main, showBanner :: IO ()
 
 showHelp = putStrLn "usage: measure <command>"
 
+showCombinedHelp = putStrLn " usage: measure <command>"
+
 showVersion = putStrLn $ "measure version " <> (DV.showVersion version)
+
+showCombinedVersion = putStrLn $ " version " <> (DV.showVersion version)
+
+showBanner = putStrLn banner
+
+banner :: String
+banner = "\
+\  _ __ ___   ___  __ _ ___ _   _ _ __ ___ \n\
+\ | '_ ` _ \\ / _ \\/ _` / __| | | | '__/ _ \n\
+\ | | | | | |  __/ (_| \\__ \\ |_| | | |  __/\n\
+\ |_| |_| |_|\\___|\\__,_|___/\\__,_|_|  \\___|\n\
+\                                          \n\
+\"
 
 main = do
   args <- getArgs
   case args of
     ["--version"] -> showVersion
+    ["-v"]        -> showVersion
     ["--help"]    -> showHelp
+    ["-h"]        -> showHelp
     cmd:params    -> runMeasure (cmd:params)
-    []            -> showHelp
+    []            -> showBanner >> showCombinedVersion >> showCombinedHelp
 
 runMeasure :: [String] -> IO ()
 runMeasure args = do
@@ -59,4 +77,4 @@ prettyMeasurement (Completed ExitSuccess)        = measureout "success"   (0 :: 
 prettyMeasurement (Completed (ExitFailure code)) = measureout "failed"    code
 
 measureout :: forall a. Show a => String -> a -> String
-measureout prefix value = "measure:" <> prefix <> "[" <> (show value) <> "]"
+measureout prefix value = (green "measure:") <> (yellow prefix) <> "[" <> (show value) <> "]"
