@@ -18,7 +18,7 @@ data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b | Com
 
 type UTCMeasurement = Measurement UTCTime (Diff UTCTime) String
 
-showHelp, showVersion, showCombinedVersion, main, showBanner :: IO ()
+main, showHelp, showVersion, showBanner, showCombinedVersion, showCombinedHelp :: IO ()
 
 showHelp = putStrLn "usage: measure <command>"
 
