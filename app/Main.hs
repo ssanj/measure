@@ -10,7 +10,7 @@ import Data.List (intercalate)
 import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
-import Format (green, yellow)
+import Format (green, yellow, red)
 
 import qualified Data.Version as DV
 
@@ -52,10 +52,12 @@ main = do
 runMeasure :: [String] -> IO ()
 runMeasure args = do
   start <- getCurrentTime
-  putStrLn $ prettyMeasurement (StartTime start :: UTCMeasurement)
-  let program = intercalate " " args
+  let startTime = prettyMeasurement (StartTime start :: UTCMeasurement)
+      program   = intercalate " " args
+  putStrLn startTime -- add start time to the top in case the command never completes
   runProgram program
   end <- getCurrentTime
+  putStrLn startTime -- duplicate start time at the bottom where it's easier to see 
   putStrLn $ prettyMeasurement (EndTime end :: UTCMeasurement)
   let diff = end .-. start :: Diff UTCTime
   putStrLn $ prettyMeasurement (TimeTaken diff :: UTCMeasurement)
@@ -69,12 +71,18 @@ runProgram program = do
 
 
 prettyMeasurement :: forall a b c. (Show a, Show b, Show c) => Measurement a b c -> String
-prettyMeasurement (StartTime value) = measureout "start"   value
-prettyMeasurement (Running value)   = measureout "running" value
-prettyMeasurement (EndTime value)   = measureout "end"     value
-prettyMeasurement (TimeTaken value) = measureout "time"    value
-prettyMeasurement (Completed ExitSuccess)        = measureout "success"   (0 :: Int)
-prettyMeasurement (Completed (ExitFailure code)) = measureout "failed"    code
+prettyMeasurement (StartTime value)              = measureoutValue  "start"   value
+prettyMeasurement (Running value)                = measureoutValue  "running" value
+prettyMeasurement (EndTime value)                = measureoutValue  "end"     value
+prettyMeasurement (TimeTaken value)              = measureoutValue  "time"    value
+prettyMeasurement (Completed ExitSuccess)        = measureoutPrefix "success"
+prettyMeasurement (Completed (ExitFailure code)) = measureoutError  "failed"  code
 
-measureout :: forall a. Show a => String -> a -> String
-measureout prefix value = (green "measure:") <> (yellow prefix) <> "[" <> (show value) <> "]"
+measureoutValue :: forall a. Show a => String -> a -> String
+measureoutValue prefix value = (measureoutPrefix prefix) <> "[" <> (show value) <> "]"
+
+measureoutError :: forall a. Show a => String -> a -> String
+measureoutError prefix value = (green "measure:") <> (red prefix) <> "(exit code: " <> (show value) <> ")"
+
+measureoutPrefix :: String -> String
+measureoutPrefix prefix = (green "measure:") <> (yellow prefix)
