@@ -26,6 +26,7 @@ dependencies:
 - vector-space
 - process
 - ansi-wl-pprint
+- text
 - formatting
 
 library:

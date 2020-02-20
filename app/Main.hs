@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Main where
@@ -6,19 +6,22 @@ module Main where
 import Data.Thyme
 
 import Paths_measure (version)
-import Data.AffineSpace ((.-.), Diff)
 import Data.List (intercalate)
+import Data.Text.Lazy (unpack)
 import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
 import Format (green, yellow, red)
+
 import System.Clock
+import Formatting
+import Formatting.Clock
 
 import qualified Data.Version as DV
 
-data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b | Completed ExitCode
+data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b b | Completed ExitCode
 
-type MonotonicMeasurement = Measurement UTCTime Integer String
+type MonotonicMeasurement = Measurement UTCTime TimeSpec String
 
 main, showHelp, showVersion, showBanner, showCombinedVersion, showCombinedHelp :: IO ()
 
@@ -54,12 +57,11 @@ main = do
 
 class (Applicative f) => MonotonicClock f a where
   getMonotonicTime :: f a
-  monotonicDiff :: f a -> f a -> f a
 
 instance MonotonicClock IO TimeSpec where
   getMonotonicTime = getTime Monotonic
-  monotonicDiff fend fstart = diffTimeSpec <$> fend <*> fstart
 
+-- How do we make this polymorphic?
 runMeasure :: [String] -> IO ()
 runMeasure args = do
   startPoint <- getMonotonicTime
@@ -72,8 +74,7 @@ runMeasure args = do
   endPoint <- getMonotonicTime
   putStrLn startTime -- duplicate start time at the bottom where it's easier to see 
   putStrLn $ prettyMeasurement (EndTime end :: MonotonicMeasurement)
-  diffInNanos <- (monotonicDiff (pure endPoint) (pure startPoint))
-  putStrLn $ prettyMeasurement (TimeTaken (toNanoSecs diffInNanos) :: MonotonicMeasurement)
+  putStrLn $ prettyMeasurement (TimeTaken startPoint endPoint :: MonotonicMeasurement)
 
 runProgram :: String -> IO ()
 runProgram program = do 
@@ -87,15 +88,15 @@ prettyMeasurement :: MonotonicMeasurement -> String
 prettyMeasurement (StartTime value)              = measureoutValue    "start"    value
 prettyMeasurement (Running value)                = measureoutValue    "running"  value
 prettyMeasurement (EndTime value)                = measureoutValue    "end"      value
-prettyMeasurement (TimeTaken value)              = measureoutDuration "duration" value
+prettyMeasurement (TimeTaken value1 value2)      = measureoutDuration "duration" value1 value2
 prettyMeasurement (Completed ExitSuccess)        = measureoutPrefix   "success"
 prettyMeasurement (Completed (ExitFailure code)) = measureoutError    "failed"   code
 
 measureoutValue :: forall a. Show a => String -> a -> String
 measureoutValue prefix value = (measureoutPrefix prefix) <> "[" <> (show value) <> "]"
 
-measureoutDuration :: forall a. Show a => String -> a -> String
-measureoutDuration prefix value = (measureoutPrefix prefix) <> "[" <> (show value) <> " ns]"
+measureoutDuration :: String -> TimeSpec -> TimeSpec -> String
+measureoutDuration prefix value1 value2 = (measureoutPrefix prefix) <> "[" <> (unpack $ format (timeSpecs) value1 value2) <> "]"
 
 measureoutError :: forall a. Show a => String -> a -> String
 measureoutError prefix value = (green "measure:") <> (red prefix) <> "(exit code: " <> (show value) <> ")"
