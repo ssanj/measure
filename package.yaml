@@ -1,5 +1,5 @@
 name:                measure
-version:             0.1.0.10
+version:             0.1.0.11
 github:              "ssanj/measure"
 license:             BSD3
 author:              "sanjiv sahayam"
@@ -22,9 +22,11 @@ description:         Please see the README on GitHub at <https://github.com/ssan
 dependencies:
 - base >= 4.7 && < 5
 - thyme
+- clock
 - vector-space
 - process
 - ansi-wl-pprint
+- formatting
 
 library:
   source-dirs: src

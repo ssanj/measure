@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Main where
 
@@ -11,12 +12,13 @@ import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
 import Format (green, yellow, red)
+import System.Clock
 
 import qualified Data.Version as DV
 
 data Measurement a b c = StartTime a | Running c | EndTime a | TimeTaken b | Completed ExitCode
 
-type UTCMeasurement = Measurement UTCTime (Diff UTCTime) String
+type MonotonicMeasurement = Measurement UTCTime Integer String
 
 main, showHelp, showVersion, showBanner, showCombinedVersion, showCombinedHelp :: IO ()
 
@@ -49,37 +51,51 @@ main = do
     cmd:params    -> runMeasure (cmd:params)
     []            -> showBanner >> showCombinedVersion >> showCombinedHelp
 
+
+class (Applicative f) => MonotonicClock f a where
+  getMonotonicTime :: f a
+  monotonicDiff :: f a -> f a -> f a
+
+instance MonotonicClock IO TimeSpec where
+  getMonotonicTime = getTime Monotonic
+  monotonicDiff fend fstart = diffTimeSpec <$> fend <*> fstart
+
 runMeasure :: [String] -> IO ()
 runMeasure args = do
-  start <- getCurrentTime
-  let startTime = prettyMeasurement (StartTime start :: UTCMeasurement)
+  startPoint <- getMonotonicTime
+  start      <- getCurrentTime
+  let startTime = prettyMeasurement (StartTime start :: MonotonicMeasurement)
       program   = intercalate " " args
   putStrLn startTime -- add start time to the top in case the command never completes
   runProgram program
-  end <- getCurrentTime
+  end      <- getCurrentTime
+  endPoint <- getMonotonicTime
   putStrLn startTime -- duplicate start time at the bottom where it's easier to see 
-  putStrLn $ prettyMeasurement (EndTime end :: UTCMeasurement)
-  let diff = end .-. start :: Diff UTCTime
-  putStrLn $ prettyMeasurement (TimeTaken diff :: UTCMeasurement)
+  putStrLn $ prettyMeasurement (EndTime end :: MonotonicMeasurement)
+  diffInNanos <- (monotonicDiff (pure endPoint) (pure startPoint))
+  putStrLn $ prettyMeasurement (TimeTaken (toNanoSecs diffInNanos) :: MonotonicMeasurement)
 
 runProgram :: String -> IO ()
 runProgram program = do 
-  putStrLn $ prettyMeasurement (Running program :: UTCMeasurement)
+  putStrLn $ prettyMeasurement (Running program :: MonotonicMeasurement)
   handle   <- spawnCommand program
   exitCode <- waitForProcess handle
-  putStrLn $ prettyMeasurement (Completed exitCode :: UTCMeasurement)
+  putStrLn $ prettyMeasurement (Completed exitCode :: MonotonicMeasurement)
 
 
-prettyMeasurement :: forall a b c. (Show a, Show b, Show c) => Measurement a b c -> String
-prettyMeasurement (StartTime value)              = measureoutValue  "start"   value
-prettyMeasurement (Running value)                = measureoutValue  "running" value
-prettyMeasurement (EndTime value)                = measureoutValue  "end"     value
-prettyMeasurement (TimeTaken value)              = measureoutValue  "time"    value
-prettyMeasurement (Completed ExitSuccess)        = measureoutPrefix "success"
-prettyMeasurement (Completed (ExitFailure code)) = measureoutError  "failed"  code
+prettyMeasurement :: MonotonicMeasurement -> String
+prettyMeasurement (StartTime value)              = measureoutValue    "start"    value
+prettyMeasurement (Running value)                = measureoutValue    "running"  value
+prettyMeasurement (EndTime value)                = measureoutValue    "end"      value
+prettyMeasurement (TimeTaken value)              = measureoutDuration "duration" value
+prettyMeasurement (Completed ExitSuccess)        = measureoutPrefix   "success"
+prettyMeasurement (Completed (ExitFailure code)) = measureoutError    "failed"   code
 
 measureoutValue :: forall a. Show a => String -> a -> String
 measureoutValue prefix value = (measureoutPrefix prefix) <> "[" <> (show value) <> "]"
+
+measureoutDuration :: forall a. Show a => String -> a -> String
+measureoutDuration prefix value = (measureoutPrefix prefix) <> "[" <> (show value) <> " ns]"
 
 measureoutError :: forall a. Show a => String -> a -> String
 measureoutError prefix value = (green "measure:") <> (red prefix) <> "(exit code: " <> (show value) <> ")"

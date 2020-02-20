@@ -1,4 +1,4 @@
 #!/bin/bash
 
-stack hoogle -- server --local --port=8080
+stack hoogle -- server --local --port="${1:-8080}"
 
