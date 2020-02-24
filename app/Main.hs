@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 
 module Main where
 
@@ -51,7 +53,7 @@ main = do
     ["-v"]        -> showVersion
     ["--help"]    -> showHelp
     ["-h"]        -> showHelp
-    cmd:params    -> runMeasure (cmd:params)
+    params@(_:_)    -> runMeasure (intercalate " " params) prettyMeasurement
     []            -> showBanner >> showCombinedVersion >> showCombinedHelp
 
 
@@ -61,29 +63,44 @@ class (Applicative f) => MonotonicClock f a where
 instance MonotonicClock IO TimeSpec where
   getMonotonicTime = getTime Monotonic
 
--- How do we make this polymorphic?
-runMeasure :: [String] -> IO ()
-runMeasure args = do
-  startPoint <- getMonotonicTime
-  start      <- getCurrentTime
-  let startTime = prettyMeasurement (StartTime start :: MonotonicMeasurement)
-      program   = intercalate " " args
-  putStrLn startTime -- add start time to the top in case the command never completes
-  runProgram program
-  end      <- getCurrentTime
-  endPoint <- getMonotonicTime
-  putStrLn startTime -- duplicate start time at the bottom where it's easier to see 
-  putStrLn $ prettyMeasurement (EndTime end :: MonotonicMeasurement)
-  putStrLn $ prettyMeasurement (TimeTaken startPoint endPoint :: MonotonicMeasurement)
+class WallClock f a where
+  getWallTime :: f a
 
-runProgram :: String -> IO ()
-runProgram program = do 
-  putStrLn $ prettyMeasurement (Running program :: MonotonicMeasurement)
-  handle   <- spawnCommand program
-  exitCode <- waitForProcess handle
-  putStrLn $ prettyMeasurement (Completed exitCode :: MonotonicMeasurement)
+instance WallClock IO UTCTime where
+  getWallTime = getCurrentTime
 
+class Process m a where
+  runSyncCommand :: a -> m ExitCode
 
+instance Process IO String where
+  runSyncCommand program = spawnCommand program >>= waitForProcess
+
+class Console m a where
+  printLine :: a -> m ()
+
+instance Console IO String where
+  printLine = putStrLn
+
+runMeasure :: forall f a b c. (Monad f, WallClock f a, MonotonicClock f b, Process f c, Console f c) => c -> (Measurement a b c -> c) -> f ()
+runMeasure program pretty = do
+  startPoint :: b <- getMonotonicTime
+  start :: a      <- getWallTime
+  let startTime = pretty (StartTime start)
+  printLine startTime -- add start time to the top in case the command never completes
+  runProgram pretty program
+  end :: a      <- getWallTime
+  endPoint :: b <- getMonotonicTime
+  printLine startTime -- duplicate start time at the bottom where it's easier to see 
+  printLine $ pretty (EndTime end :: Measurement a b c)
+  printLine $ pretty (TimeTaken startPoint endPoint :: Measurement a b c)
+
+runProgram :: forall f a b c. (Monad f, Process f c, Console f c) => (Measurement a b c -> c) -> c -> f ()
+runProgram pretty program = do 
+  printLine $ pretty (Running program)
+  exitCode <- runSyncCommand program
+  printLine $ pretty (Completed exitCode)
+
+-- TODO: Move this out into a separate module
 prettyMeasurement :: MonotonicMeasurement -> String
 prettyMeasurement (StartTime value)              = measureoutValue    "start"    value
 prettyMeasurement (Running value)                = measureoutValue    "running"  value
