@@ -18,6 +18,8 @@ else
   echo "OWNER=${OWNER} REPO=${REPO} BIN=${BIN} BUNDLE_NAME=${BUNDLE_NAME} PATH=${PATH}"
   cp "$BIN" "./$REPO"
   chmod +x "./$REPO"
+  echo "stripping executable"
+  strip "./$REPO"
   tar -czf "$BUNDLE_NAME" "$REPO"
   echo "SHA256:"
   shasum -a 256 "$BUNDLE_NAME"
