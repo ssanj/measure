@@ -3,9 +3,8 @@
 module Measure (runMeasure) where
 
 import qualified Model as M
-import Print
 
-runMeasure :: forall f a b c d. (Monad f, M.WallClock f a, M.MonotonicClock f b, M.Process f c, M.Console f d) => c -> (c -> f()) -> (M.Measurement a b c d -> d) -> f ()
+runMeasure :: forall f a b c d. (Monad f, M.WallClock f a, M.MonotonicClock f b, M.Console f d) => c -> (c -> f()) -> (M.Measurement a b c d -> d) -> f ()
 runMeasure program programRunner pretty = do
   startPoint <- M.getMonotonicTime
   start      <- M.getWallTime

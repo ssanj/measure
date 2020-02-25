@@ -2,13 +2,28 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE FlexibleInstances     #-}
 
-module Model where
+module Model(
+  -- * Types  
+    MonotonicClock
+  , WallClock 
+  , Process 
+  , Console 
+  , Measurement(..) 
+  , MonotonicMeasurement
+  , MonotonicLocalMeasurement
+  , Printable(..)
+  -- * Functions
+  , getMonotonicTime
+  , getWallTime
+  , runSyncCommand
+  , printLine
+) where
 
-import Data.Thyme (UTCTime, getCurrentTime)
+import Data.Thyme (UTCTime, LocalTime, getCurrentTime, getCurrentTimeZone)
+import Data.Thyme.Time.Core (utcToLocalTime)
 import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Clock (TimeSpec, getTime, Clock(Monotonic))
-import Control.Monad
 
 class (Applicative f) => MonotonicClock f a where
   getMonotonicTime :: f a
@@ -21,6 +36,9 @@ class WallClock f a where
 
 instance WallClock IO UTCTime where
   getWallTime = getCurrentTime
+
+instance WallClock IO LocalTime where
+  getWallTime = utcToLocalTime <$> getCurrentTimeZone <*> getCurrentTime
 
 class Process m a where
   runSyncCommand :: a -> m ExitCode
@@ -37,3 +55,14 @@ instance Console IO String where
 data Measurement a b c d = StartTime a | Running c | EndTime a | TimeTaken b b | Completed ExitCode
 
 type MonotonicMeasurement = Measurement UTCTime TimeSpec String String
+
+type MonotonicLocalMeasurement = Measurement LocalTime TimeSpec String String
+
+data Printable a b c d = 
+  Printable {  
+      printStartTime :: a -> d
+    , printEndTime   :: a -> d
+    , printDuration  :: b -> b -> d
+    , printCommand   :: c -> d
+    , printExitCode  :: ExitCode -> d
+  }

@@ -1,12 +1,12 @@
 module IOProgram (mainProgam) where
 
 import Paths_measure (version)
-import Data.List (intercalate)
+import Data.List (intercalate, isPrefixOf)
 import System.Environment (getArgs)
 
 import qualified Data.Version as DV
 
-import Print (prettyMeasurement)
+import Print (prettyMeasurement, prettyMonotonicMeasure, prettyMonotonicLocalMeasure)
 import Runner (runProgram)
 import Measure (runMeasure)
 
@@ -31,12 +31,14 @@ banner = "\
 \                                          \n\
 \"
 
+-- TODO: Clean this up
+-- match by prefix (--) and then validate all valid arguments
 mainProgam = do
   args <- getArgs
   case args of
-    ["--version"] -> showVersion
-    ["-v"]        -> showVersion
-    ["--help"]    -> showHelp
-    ["-h"]        -> showHelp
-    params@(_:_)    -> runMeasure (intercalate " " params) (runProgram prettyMeasurement) prettyMeasurement
-    []            -> showBanner >> showCombinedVersion >> showCombinedHelp
+    x | x == ["--version"] || x == ["-v"] -> showVersion
+    x | x == ["--help"]    || x == ["-h"] -> showHelp
+    ("--utc":p1:other)   -> runMeasure (intercalate " " (p1:other)) (runProgram $ prettyMeasurement prettyMonotonicMeasure) (prettyMeasurement prettyMonotonicMeasure)
+    ("--local":p1:other) -> runMeasure (intercalate " " (p1:other)) (runProgram $ prettyMeasurement prettyMonotonicLocalMeasure) (prettyMeasurement prettyMonotonicLocalMeasure)
+    (p1:other) | not $ isPrefixOf "--" p1 -> runMeasure (intercalate " " (p1:other)) (runProgram $ prettyMeasurement prettyMonotonicLocalMeasure) (prettyMeasurement prettyMonotonicLocalMeasure)
+    _ -> showBanner >> showCombinedVersion >> showCombinedHelp    

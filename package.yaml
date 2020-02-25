@@ -31,7 +31,16 @@ library:
   - ansi-wl-pprint
   - text
   - formatting
-
+  ghc-options:
+  - -Weverything
+  - -fprint-potential-instances
+  - -fprint-expanded-synonyms
+  - -fno-warn-missing-import-lists
+  - -fno-warn-all-missed-specialisations
+  - -Wno-implicit-prelude
+  - -Wno-unsafe
+  - -Wno-safe
+  - -Wno-type-defaults
 
 executables:
   measure:
