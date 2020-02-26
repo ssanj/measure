@@ -25,7 +25,7 @@ import System.Process (spawnCommand, waitForProcess)
 import System.Exit (ExitCode(..))
 import System.Clock (TimeSpec, getTime, Clock(Monotonic))
 
-class (Applicative f) => MonotonicClock f a where
+class MonotonicClock f a where
   getMonotonicTime :: f a
 
 instance MonotonicClock IO TimeSpec where
