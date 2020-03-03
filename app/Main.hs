@@ -2,7 +2,7 @@
 
 module Main where
 
-import IOProgram (mainProgam)
+import IOProgram (mainProgramWithDefaults)
 
 main :: IO ()
-main = mainProgam
+main = mainProgramWithDefaults
